@@ -19,7 +19,7 @@ import tensorflow as tf
 import os.path as osp
 import numpy as np
 import rospy
-from listener import ImageListener
+from image_server import ImageServer
 
 def parse_args():
     """
@@ -120,7 +120,7 @@ if __name__ == '__main__':
     print ('Loading model weights from {:s}').format(args.model)
 
     # image listener
-    listener = ImageListener(sess, network, imdb, cfg)
+    listener = ImageServer(sess, network, imdb, cfg)
     try:  
         rospy.spin()
     except KeyboardInterrupt:

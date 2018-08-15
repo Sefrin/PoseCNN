@@ -20,7 +20,7 @@ class ImageListener:
         self.imdb = imdb
         self.cfg = cfg
         self.cv_bridge = CvBridge()
-        self.count = 0
+        # self.count = 0
 
         # initialize a node
         rospy.init_node("image_listener")
@@ -40,7 +40,6 @@ class ImageListener:
         K = np.array([[info.K[0], info.K[1], info.K[2]],
                       [info.K[3], info.K[4], info.K[5]],
                       [info.K[6], info.K[7], info.K[8]]])
-        print("Cb")
         self.meta_data = dict({'intrinsic_matrix': K, 'factor_depth': 1000.0})
 
         if depth.encoding == '32FC1':
@@ -65,7 +64,7 @@ class ImageListener:
         # filename = 'images/%06d-depth.png' % self.count
         # cv2.imwrite(filename, depth_cv)
         # print filename
-        self.count += 1
+        # self.count += 1
 
         # run network
         labels, probs, vertex_pred, rois, poses = self.im_segment_single_frame(self.sess, self.net, im, depth_cv, self.meta_data, \
