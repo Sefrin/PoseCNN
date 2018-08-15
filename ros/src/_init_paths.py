@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # --------------------------------------------------------
 # FCN
 # Copyright (c) 2016 RSE at UW
@@ -5,7 +6,7 @@
 # Written by Yu Xiang
 # --------------------------------------------------------
 
-"""Set up paths for Fast R-CNN."""
+#"""Set up paths for Fast R-CNN."""
 
 import os.path as osp
 import sys
@@ -17,9 +18,10 @@ def add_path(path):
 this_dir = osp.dirname(__file__)
 
 # Add lib to PYTHONPATH
-lib_path = osp.join(this_dir, '..', 'lib')
+lib_path = osp.join(this_dir, '..', '..', 'lib')
 add_path(lib_path)
 
 lib_path = osp.join(this_dir, 'devel/lib/python2.7/dist-packages')
 add_path(lib_path)
+print(sys.path)
 

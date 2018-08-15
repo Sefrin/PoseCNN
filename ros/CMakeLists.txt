@@ -1,39 +1,20 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(synthesizer)
-
-set(xFusion_ROOT "/home/yuxiang/Projects/Deep_Pose/lib/kinect_fusion")
-set(xFusion_INCLUDE_DIRS ${xFusion_ROOT}/include)
-set(xFusion_LIBRARY_DIRS ${xFusion_ROOT}/build)
-set(xFusion_LIBRARIES kfusion)
+project(pose_cnn)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
-include(FindNLopt.cmake)
-add_definitions(-std=c++11)
-add_definitions(-Wall)
-add_definitions(-fPIC)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  roscpp
+  message_generation
   rospy
   std_msgs
+  message_filters
   sensor_msgs
-  message_generation
-  cv_bridge
+  vision_msgs
 )
-
-find_package(CUDA REQUIRED)
-find_package(Pangolin REQUIRED)
-find_package(Eigen3 REQUIRED)
-find_package(PkgConfig REQUIRED)
-find_package(OpenCV REQUIRED)
-find_package(PCL REQUIRED)
-
-set(SUITESPARSE_INCLUDE_DIRS "/usr/include/suitesparse" CACHE PATH "suitesparse include directory")
-set(SUITESPARSE_LIBRARIES "cholmod;metis")
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -42,7 +23,7 @@ set(SUITESPARSE_LIBRARIES "cholmod;metis")
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
-#catkin_python_setup()
+# catkin_python_setup()
 
 ################################################
 ## Declare ROS messages, services and actions ##
@@ -54,10 +35,10 @@ set(SUITESPARSE_LIBRARIES "cholmod;metis")
 ##   your messages/services/actions (e.g. std_msgs, actionlib_msgs, ...).
 ## * In the file package.xml:
 ##   * add a build_depend tag for "message_generation"
-##   * add a build_depend and a run_depend tag for each package in MSG_DEP_SET
+##   * add a build_depend and a exec_depend tag for each package in MSG_DEP_SET
 ##   * If MSG_DEP_SET isn't empty the following dependency has been pulled in
 ##     but can be declared for certainty nonetheless:
-##     * add a run_depend tag for "message_runtime"
+##     * add a exec_depend tag for "message_runtime"
 ## * In this file (CMakeLists.txt):
 ##   * add "message_generation" and every package in MSG_DEP_SET to
 ##     find_package(catkin REQUIRED COMPONENTS ...)
@@ -69,10 +50,11 @@ set(SUITESPARSE_LIBRARIES "cholmod;metis")
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-add_message_files(
-  FILES
-  PoseCNNMsg.msg
-)
+# add_message_files(
+#   FILES
+#   Message1.msg
+#   Message2.msg
+# )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -89,11 +71,10 @@ add_message_files(
 # )
 
 ## Generate added messages and services with any dependencies listed here
-generate_messages(
-  DEPENDENCIES
-  std_msgs
-  sensor_msgs
-)
+# generate_messages(
+#   DEPENDENCIES
+#   sensor_msgs#   std_msgs
+# )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -102,7 +83,7 @@ generate_messages(
 ## To declare and build dynamic reconfigure parameters within this
 ## package, follow these steps:
 ## * In the file package.xml:
-##   * add a build_depend and a run_depend tag for "dynamic_reconfigure"
+##   * add a build_depend and a exec_depend tag for "dynamic_reconfigure"
 ## * In this file (CMakeLists.txt):
 ##   * add "dynamic_reconfigure" to
 ##     find_package(catkin REQUIRED COMPONENTS ...)
@@ -126,39 +107,25 @@ generate_messages(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES synthesizer
-#  CATKIN_DEPENDS roscpp rospy std_msgs
+#  LIBRARIES posecnn
+#  CATKIN_DEPENDS message_generation rospy sensor_msgs std_msgs
 #  DEPENDS system_lib
-  CATKIN_DEPENDS message_runtime
 )
 
 ###########
 ## Build ##
 ###########
 
-list(REMOVE_ITEM PCL_LIBRARIES "vtkproj4")
-
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-  include
-  ${Pangolin_INCLUDE_DIRS}
-  ${xFusion_INCLUDE_DIRS}
-  ${EIGEN3_INCLUDE_DIR}
-  ${SUITESPARSE_INCLUDE_DIRS}
-  ${OpenCV_INCLUDE_DIRS}
-  ${PCL_INCLUDE_DIRS}
-  ${CUDA_TOOLKIT_ROOT_DIR}/samples/common/inc
+# include
   ${catkin_INCLUDE_DIRS}
 )
 
-link_directories(${Pangolin_LIBRARY_DIRS}
-                 ${xFusion_LIBRARY_DIRS}
-                 ${PCL_LIBRARY_DIRS})
-
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/synthesizer.cpp
+#   src/${PROJECT_NAME}/posecnn.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -169,7 +136,7 @@ link_directories(${Pangolin_LIBRARY_DIRS}
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-cuda_add_executable(${PROJECT_NAME}_node src/synthesizer.cpp src/main.cpp)
+# add_executable(${PROJECT_NAME}_node src/posecnn_node.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -179,22 +146,12 @@ cuda_add_executable(${PROJECT_NAME}_node src/synthesizer.cpp src/main.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(${PROJECT_NAME}_node
-  ${catkin_LIBRARIES}
-  ${Pangolin_LIBRARIES}
-  ${xFusion_LIBRARIES}
-  ${DEPTHSENSE_LIBRARIES}
-  ${SUITESPARSE_LIBRARIES}
-  ${OpenEXR_LIBRARIES}
-  #${OpenCV_LIBS}
-  ${NLOPT_LIBRARIES}
-  ${PCL_LIBRARIES}
-  assimp
-  util
-)
+# target_link_libraries(${PROJECT_NAME}_node
+#   ${catkin_LIBRARIES}
+# )
 
 #############
 ## Install ##
@@ -236,7 +193,7 @@ target_link_libraries(${PROJECT_NAME}_node
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_synthesizer.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_posecnn.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

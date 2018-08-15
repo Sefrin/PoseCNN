@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="root" default="$(find pose_cnn)" />
+    <arg name="gpu" default="0" />
+    <arg name="weights" default="vgg16_fcn_color_single_frame_2d_pose_add_lov_iter_160000" />
+    <arg name="model" default="$(arg root)/../data/demo_models/vgg16_fcn_color_single_frame_2d_pose_add_lov_iter_160000.ckpt" />
+    <arg name="cfg" default="$(arg root)/../experiments/cfgs/lov_color_2d.yml" />
+    <arg name="wait" default="true" />
+    <arg name="imdb" default="lov_keyframe" />
+    <arg name="network" default="vgg16_convs" />
+    <!-- <arg name="rig" default="" /> -->
+    <arg name="cad" default="$(arg root)/../data/LOV/models.txt" />
+    <arg name="kfusion" default="False" />
+    <arg name="pose" default="$(arg root)/../data/LOV/poses.txt" />
+    <arg name="background" default="$(arg root)/../data/cache/backgrounds.pkl" />
+
+  <node name="recognition_server" pkg="pose_cnn" type="recognition_server.py" args="--gpu $(arg gpu) --weights $(arg weights) --model $(arg model) --cfg $(arg cfg) --wait $(arg wait) --imdb $(arg imdb) --network $(arg network) --cad $(arg cad) --kfusion $(arg kfusion) --pose $(arg pose) --background $(arg background)" output="screen">
+
+
+  </node>
+</launch>

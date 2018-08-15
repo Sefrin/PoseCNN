@@ -65,7 +65,7 @@ If you find PoseCNN useful in your research, please consider citing:
 
 ### Required environment
 - Ubuntu 16.04
-- Tensorflow >= 1.2.0
+- Tensorflow >= 1.2.0 (1.8!!!!!!!) with -D_GLIBCXX_USE_CXX11_ABI=0
 - CUDA >= 8.0
 
 ### Running the demo

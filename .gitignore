@@ -6,11 +6,7 @@
 *.o
 *.obj
 *.mtl
-*.xml
-*.png
 output*
 lib/icp/icp_main.cpp
-ros/build/*
-ros/data/*
-ros/devel/*
 images/*
+*build*

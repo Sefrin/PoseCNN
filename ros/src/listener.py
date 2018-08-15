@@ -8,16 +8,16 @@ from normals import gpu_normals
 from cv_bridge import CvBridge, CvBridgeError
 from std_msgs.msg import String
 from sensor_msgs.msg import Image
+from sensor_msgs.msg import CameraInfo
 from synthesizer.msg import PoseCNNMsg
 
 class ImageListener:
 
-    def __init__(self, sess, network, imdb, meta_data, cfg):
+    def __init__(self, sess, network, imdb, cfg):
 
         self.sess = sess
         self.net = network
         self.imdb = imdb
-        self.meta_data = meta_data
         self.cfg = cfg
         self.cv_bridge = CvBridge()
         self.count = 0
@@ -26,16 +26,23 @@ class ImageListener:
         rospy.init_node("image_listener")
         self.posecnn_pub = rospy.Publisher('posecnn_result', PoseCNNMsg, queue_size=1)
         self.label_pub = rospy.Publisher('posecnn_label', Image, queue_size=1)
-        rgb_sub = message_filters.Subscriber('/camera/rgb/image_color', Image, queue_size=2)
-        depth_sub = message_filters.Subscriber('/camera/depth_registered/image', Image, queue_size=2)
+        rgb_sub = message_filters.Subscriber('/camera/rgb/image_rect_color', Image, queue_size=2)
+        camera_info_sub = message_filters.Subscriber('/camera/depth/camera_info', CameraInfo, queue_size=2)
+        depth_sub = message_filters.Subscriber('/camera/depth/image_rect', Image, queue_size=2)
         # depth_sub = message_filters.Subscriber('/camera/depth_registered/sw_registered/image_rect_raw', Image, queue_size=2)
 
         queue_size = 1
-        slop_seconds = 0.025
-        ts = message_filters.ApproximateTimeSynchronizer([rgb_sub, depth_sub], queue_size, slop_seconds)
+        slop_seconds = 0.05
+        ts = message_filters.ApproximateTimeSynchronizer([rgb_sub, depth_sub, camera_info_sub], queue_size, slop_seconds)
         ts.registerCallback(self.callback)
 
-    def callback(self, rgb, depth):
+    def callback(self, rgb, depth, info):
+        K = np.array([[info.K[0], info.K[1], info.K[2]],
+                      [info.K[3], info.K[4], info.K[5]],
+                      [info.K[6], info.K[7], info.K[8]]])
+        print("Cb")
+        self.meta_data = dict({'intrinsic_matrix': K, 'factor_depth': 1000.0})
+
         if depth.encoding == '32FC1':
             depth_32 = self.cv_bridge.imgmsg_to_cv2(depth) * 1000
             depth_cv = np.array(depth_32, dtype=np.uint16)
@@ -49,12 +56,15 @@ class ImageListener:
 
         # write images
         im = self.cv_bridge.imgmsg_to_cv2(rgb, 'bgr8')
-        filename = 'images/%06d-color.png' % self.count
-        cv2.imwrite(filename, im)
 
-        filename = 'images/%06d-depth.png' % self.count
-        cv2.imwrite(filename, depth_cv)
-        print filename
+        im = cv2.resize(im, (640, 480))
+        depth_cv = cv2.resize(depth_cv, (640, 480))
+        # filename = 'images/%06d-color.png' % self.count
+        # cv2.imwrite(filename, im)
+
+        # filename = 'images/%06d-depth.png' % self.count
+        # cv2.imwrite(filename, depth_cv)
+        # print filename
         self.count += 1
 
         # run network
