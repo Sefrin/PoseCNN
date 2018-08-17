@@ -4,6 +4,7 @@ import rospy
 import message_filters
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CameraInfo
+from vision_msgs import *
 from pose_cnn.srv import *
 
 def callback(rgb, depth, info):
@@ -11,7 +12,7 @@ def callback(rgb, depth, info):
     try:
         rec = rospy.ServiceProxy('posecnn_recognize', recognize)
         resp1 = rec(rgb, depth, info)
-        return resp1.detections
+        print resp1.detections
     except rospy.ServiceException, e:
         print "Service call failed: %s"%e
 

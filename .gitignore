@@ -10,3 +10,4 @@ output*
 lib/icp/icp_main.cpp
 images/*
 *build*
+nanoflann

@@ -10,9 +10,8 @@ project(pose_cnn)
 find_package(catkin REQUIRED COMPONENTS
   message_generation
   rospy
-  std_msgs
-  message_filters
   sensor_msgs
+  message_filters
   vision_msgs
 )
 
@@ -109,7 +108,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES posecnn
-#  CATKIN_DEPENDS message_generation rospy sensor_msgs std_msgs
+ # CATKIN_DEPENDS rospy sensor_msgs std_msgs
 #  DEPENDS system_lib
 )
 

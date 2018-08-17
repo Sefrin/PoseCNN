@@ -28,8 +28,9 @@ if (OPENMP_FOUND)
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
-set(BOOST_INCLUDE_DIRS "/usr/local/include")
-set(BOOST_LIBRARY_DIRS "/usr/local/lib/boost")
+
+set(BOOST_INCLUDE_DIRS "/home/dfki.uni-bremen.de/tgrenzdoerffer/boost/install/include")
+set(BOOST_LIBRARY_DIRS "/home/dfki.uni-bremen.de/tgrenzdoerffer/boost/install/lib")
 
 set(xFusion_ROOT ${PROJECT_SOURCE_DIR}/../kinect_fusion)
 set(xFusion_INCLUDE_DIRS ${xFusion_ROOT}/include)

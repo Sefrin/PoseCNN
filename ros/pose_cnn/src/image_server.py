@@ -2,15 +2,14 @@ import rospy
 import cv2
 import numpy as np
 from pose_cnn.srv import *
-from vision_msgs.msg import Detection3DArray
-from listener import ImageListener
+from vision_msgs.msg import *
 from fcn.config import cfg
 from utils.blob import im_list_to_blob, pad_im, unpad_im, add_noise
 from cv_bridge import CvBridge, CvBridgeError
 # from std_msgs.msg import String
 from sensor_msgs.msg import Image
 # from sensor_msgs.msg import CameraInfo
-from synthesizer.msg import PoseCNNMsg
+from pose_cnn_msgs.msg import PoseCNNMsg
 
 class ImageServer:
 
@@ -65,31 +64,100 @@ class ImageServer:
 
         im_label = self.imdb.labels_to_image(im, labels)
 
+        print np.shape(rois)
+        for x in rois:
+            for i in x:
+                print i
+        print "nums {}".format(int(rois.shape[0]))
+        print "channel {}".format(int(rois.shape[1]))
         # publish
-        msg = PoseCNNMsg()
-        msg.height = int(im.shape[0])
-        msg.width = int(im.shape[1])
-        msg.roi_num = int(rois.shape[0])
-        msg.roi_channel = int(rois.shape[1])
-        msg.fx = float(self.meta_data['intrinsic_matrix'][0, 0])
-        msg.fy = float(self.meta_data['intrinsic_matrix'][1, 1])
-        msg.px = float(self.meta_data['intrinsic_matrix'][0, 2])
-        msg.py = float(self.meta_data['intrinsic_matrix'][1, 2])
-        msg.factor = float(self.meta_data['factor_depth'])
-        msg.znear = float(0.25)
-        msg.zfar = float(6.0)
-        msg.label = self.cv_bridge.cv2_to_imgmsg(labels.astype(np.uint8), 'mono8')
-        msg.depth = self.cv_bridge.cv2_to_imgmsg(depth_cv, 'mono16')
-        msg.rois = rois.astype(np.float32).flatten().tolist()
-        msg.poses = poses.astype(np.float32).flatten().tolist()
-        self.posecnn_pub.publish(msg)
+        # msg = PoseCNNMsg()
+        # msg.height = int(im.shape[0])
+        # msg.width = int(im.shape[1])
+        # msg.roi_num = int(rois.shape[0])
+        # msg.roi_channel = int(rois.shape[1])
+        # msg.fx = float(self.meta_data['intrinsic_matrix'][0, 0])
+        # msg.fy = float(self.meta_data['intrinsic_matrix'][1, 1])
+        # msg.px = float(self.meta_data['intrinsic_matrix'][0, 2])
+        # msg.py = float(self.meta_data['intrinsic_matrix'][1, 2])
+        # msg.factor = float(self.meta_data['factor_depth'])
+        # msg.znear = float(0.25)
+        # msg.zfar = float(6.0)
+        # msg.label = self.cv_bridge.cv2_to_imgmsg(labels.astype(np.uint8), 'mono8')
+        # msg.depth = self.cv_bridge.cv2_to_imgmsg(depth_cv, 'mono16')
+        # msg.rois = rois.astype(np.float32).flatten().tolist()
+        # msg.poses = poses.astype(np.float32).flatten().tolist()
+        # self.posecnn_pub.publish(msg)
+        msg = Detection3DArray()
+        for i in range(int(rois.shape[0])):
+            detection = Detection3D()
+            hyp = ObjectHypothesisWithPose()
+            hyp.id = rois[i, 1]
+            hyp.pose.pose.orientation.x = poses[i][0]
+            hyp.pose.pose.orientation.y = poses[i][1]
+            hyp.pose.pose.orientation.z = poses[i][2]
+            hyp.pose.pose.orientation.w = poses[i][3]
+            hyp.pose.pose.position.x = poses[i][4]
+            hyp.pose.pose.position.y = poses[i][5]
+            hyp.pose.pose.position.z = poses[i][6]
+            detection.results.append(hyp)
+            msg.detections.append(detection)
 
         label_msg = self.cv_bridge.cv2_to_imgmsg(im_label)
         label_msg.header.stamp = rospy.Time.now()
         label_msg.header.frame_id = req.rgb_image.header.frame_id
         label_msg.encoding = 'rgb8'
         self.label_pub.publish(label_msg)
-        return recognizeResponse()
+        return recognizeResponse(msg)
+
+
+# ICP CODE?!??!
+
+    # if (cfg.TEST.VERTEX_REG_2D and cfg.TEST.POSE_REFINE) or (cfg.TEST.VERTEX_REG_3D and cfg.TEST.POSE_REG):
+    #     synthesizer = libsynthesizer.Synthesizer(cfg.CAD, cfg.POSE)
+    #     synthesizer.setup(cfg.TRAIN.SYN_WIDTH, cfg.TRAIN.SYN_HEIGHT)
+            # if cfg.TEST.POSE_REG:
+            #     # pose refinement
+            #     fx = meta_data['intrinsic_matrix'][0, 0] * im_scale
+            #     fy = meta_data['intrinsic_matrix'][1, 1] * im_scale
+            #     px = meta_data['intrinsic_matrix'][0, 2] * im_scale
+            #     py = meta_data['intrinsic_matrix'][1, 2] * im_scale
+            #     factor = meta_data['factor_depth']
+            #     znear = 0.25
+            #     zfar = 6.0
+            #     poses_new = np.zeros((poses.shape[0], 7), dtype=np.float32)        
+            #     poses_icp = np.zeros((poses.shape[0], 7), dtype=np.float32)     
+            #     error_threshold = 0.01
+            #     
+        #         labels_icp = labels.copy();
+        #         rois_icp = rois
+        #         if imdb.num_classes == 2:
+        #             I = np.where(labels_icp > 0)
+        #             labels_icp[I[0], I[1]] = imdb._cls_index
+        #             rois_icp = rois.copy()
+        #             rois_icp[:, 1] = imdb._cls_index
+        #         im_depth = cv2.resize(im_depth, None, None, fx=im_scale, fy=im_scale, interpolation=cv2.INTER_LINEAR)
+
+        #         parameters = np.zeros((7, ), dtype=np.float32)
+        #         parameters[0] = fx
+        #         parameters[1] = fy
+        #         parameters[2] = px
+        #         parameters[3] = py
+        #         parameters[4] = znear
+        #         parameters[5] = zfar
+        #         parameters[6] = factor
+
+        #         height = labels_icp.shape[0]
+        #         width = labels_icp.shape[1]
+        #         num_roi = rois_icp.shape[0]
+        #         channel_roi = rois_icp.shape[1]
+        #         synthesizer.icp_python(labels_icp, im_depth, parameters, height, width, num_roi, channel_roi, \
+            #                                rois_icp, poses, poses_new, poses_icp, error_threshold)
+
+
+
+
+
 
     def get_image_blob(self, im, im_depth, meta_data):
         """Converts an image into a network input.
