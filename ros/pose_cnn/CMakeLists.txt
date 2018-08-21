@@ -58,7 +58,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate services in the 'srv' folder
 add_service_files(
   FILES
-  recognize.srv
+  posecnn_recognize.srv
 #   Service2.srv
 )
 

@@ -10,6 +10,7 @@ from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
 # from sensor_msgs.msg import CameraInfo
 from pose_cnn_msgs.msg import PoseCNNMsg
+from pyquaternion import Quaternion
 
 class ImageServer:
 
@@ -23,7 +24,7 @@ class ImageServer:
         self.cfg = cfg
         # initialize a node
         rospy.init_node('posecnn_server')
-        self.s = rospy.Service('posecnn_recognize', recognize, self.rec)
+        self.s = rospy.Service('posecnn_recognize', posecnn_recognize, self.rec)
         self.posecnn_pub = rospy.Publisher('posecnn_result', PoseCNNMsg, queue_size=1)
         self.label_pub = rospy.Publisher('posecnn_label', Image, queue_size=1)
         print "PoseCNN recognition ready."
@@ -64,51 +65,57 @@ class ImageServer:
 
         im_label = self.imdb.labels_to_image(im, labels)
 
-        print np.shape(rois)
-        for x in rois:
-            for i in x:
-                print i
-        print "nums {}".format(int(rois.shape[0]))
-        print "channel {}".format(int(rois.shape[1]))
+        # print np.shape(rois)
+        # for x in rois:
+        #     for i in x:
+        #         print i
+        # print "nums {}".format(int(rois.shape[0]))
+        # print "channel {}".format(int(rois.shape[1]))
         # publish
-        # msg = PoseCNNMsg()
-        # msg.height = int(im.shape[0])
-        # msg.width = int(im.shape[1])
-        # msg.roi_num = int(rois.shape[0])
-        # msg.roi_channel = int(rois.shape[1])
-        # msg.fx = float(self.meta_data['intrinsic_matrix'][0, 0])
-        # msg.fy = float(self.meta_data['intrinsic_matrix'][1, 1])
-        # msg.px = float(self.meta_data['intrinsic_matrix'][0, 2])
-        # msg.py = float(self.meta_data['intrinsic_matrix'][1, 2])
-        # msg.factor = float(self.meta_data['factor_depth'])
-        # msg.znear = float(0.25)
-        # msg.zfar = float(6.0)
-        # msg.label = self.cv_bridge.cv2_to_imgmsg(labels.astype(np.uint8), 'mono8')
-        # msg.depth = self.cv_bridge.cv2_to_imgmsg(depth_cv, 'mono16')
-        # msg.rois = rois.astype(np.float32).flatten().tolist()
-        # msg.poses = poses.astype(np.float32).flatten().tolist()
-        # self.posecnn_pub.publish(msg)
-        msg = Detection3DArray()
-        for i in range(int(rois.shape[0])):
-            detection = Detection3D()
-            hyp = ObjectHypothesisWithPose()
-            hyp.id = rois[i, 1]
-            hyp.pose.pose.orientation.x = poses[i][0]
-            hyp.pose.pose.orientation.y = poses[i][1]
-            hyp.pose.pose.orientation.z = poses[i][2]
-            hyp.pose.pose.orientation.w = poses[i][3]
-            hyp.pose.pose.position.x = poses[i][4]
-            hyp.pose.pose.position.y = poses[i][5]
-            hyp.pose.pose.position.z = poses[i][6]
-            detection.results.append(hyp)
-            msg.detections.append(detection)
-
+        pose_cnn_msg = PoseCNNMsg()
+        pose_cnn_msg.height = int(im.shape[0])
+        pose_cnn_msg.width = int(im.shape[1])
+        pose_cnn_msg.roi_num = int(rois.shape[0])
+        pose_cnn_msg.roi_channel = int(rois.shape[1])
+        pose_cnn_msg.fx = float(self.meta_data['intrinsic_matrix'][0, 0])
+        pose_cnn_msg.fy = float(self.meta_data['intrinsic_matrix'][1, 1])
+        pose_cnn_msg.px = float(self.meta_data['intrinsic_matrix'][0, 2])
+        pose_cnn_msg.py = float(self.meta_data['intrinsic_matrix'][1, 2])
+        pose_cnn_msg.factor = float(self.meta_data['factor_depth'])
+        pose_cnn_msg.znear = float(0.25)
+        pose_cnn_msg.zfar = float(6.0)
+        pose_cnn_msg.label = self.cv_bridge.cv2_to_imgmsg(labels.astype(np.uint8), 'mono8')
+        pose_cnn_msg.depth = self.cv_bridge.cv2_to_imgmsg(depth_cv, 'mono16')
+        pose_cnn_msg.rois = rois.astype(np.float32).flatten().tolist()
+        pose_cnn_msg.poses = poses.astype(np.float32).flatten().tolist()
+        self.posecnn_pub.publish(pose_cnn_msg)
+  
         label_msg = self.cv_bridge.cv2_to_imgmsg(im_label)
         label_msg.header.stamp = rospy.Time.now()
         label_msg.header.frame_id = req.rgb_image.header.frame_id
         label_msg.encoding = 'rgb8'
         self.label_pub.publish(label_msg)
-        return recognizeResponse(msg)
+        
+        msg = Detection3DArray()
+        msg.header = req.rgb_image.header
+        for i in range(int(rois.shape[0])):
+            detection = Detection3D()
+            detection.header = req.rgb_image.header
+            hyp = ObjectHypothesisWithPose()
+            hyp.id = rois[i, 1]
+            print("detected : {}".format(hyp.id))
+            q = Quaternion (poses[i, :4])
+            q_norm = q.normalised
+            hyp.pose.pose.orientation.w = q_norm[0]
+            hyp.pose.pose.orientation.x = q_norm[1]
+            hyp.pose.pose.orientation.y = q_norm[2]
+            hyp.pose.pose.orientation.z = q_norm[3]
+            hyp.pose.pose.position.x = poses[i][4]
+            hyp.pose.pose.position.y = poses[i][5]
+            hyp.pose.pose.position.z = poses[i][6]
+            detection.results.append(hyp)
+            msg.detections.append(detection)
+        return posecnn_recognizeResponse(msg)
 
 
 # ICP CODE?!??!
@@ -269,6 +276,7 @@ class ImageServer:
         if self.cfg.INPUT == 'RGBD':
             data_blob = im_blob
             data_p_blob = im_depth_blob
+            print "RGBD"
         elif self.cfg.INPUT == 'COLOR':
             data_blob = im_blob
         elif self.cfg.INPUT == 'DEPTH':
