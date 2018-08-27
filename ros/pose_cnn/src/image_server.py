@@ -11,12 +11,15 @@ from sensor_msgs.msg import Image
 # from sensor_msgs.msg import CameraInfo
 from pose_cnn_msgs.msg import PoseCNNMsg
 from pyquaternion import Quaternion
-
+from dynamic_reconfigure.server import Server
+from pose_cnn.cfg import PoseCNNConfigConfig
 class ImageServer:
 
     def __init__(self, sess, network, imdb, cfg):
 
-
+        self.xfactor = 1.5
+        self.yfactor = 1.5
+        self.zfactor = 1.5
         self.cv_bridge = CvBridge()
         self.sess = sess
         self.net = network
@@ -28,13 +31,28 @@ class ImageServer:
         self.posecnn_pub = rospy.Publisher('posecnn_result', PoseCNNMsg, queue_size=1)
         self.label_pub = rospy.Publisher('posecnn_label', Image, queue_size=1)
         print "PoseCNN recognition ready."
+        srv = Server(PoseCNNConfigConfig, self.callback)
         rospy.spin()
 
+    def callback(self, config, level):
+        self.xfactor = config['x_factor']
+        self.yfactor = config['y_factor']
+        self.zfactor = config['z_factor']
+        print( config['z_factor'])
+        print "callback"
+        return config
+
     def rec(self, req):
-        K = np.array([[req.camera_info.K[0], req.camera_info.K[1], req.camera_info.K[2]],
-                      [req.camera_info.K[3], req.camera_info.K[4], req.camera_info.K[5]],
-                      [req.camera_info.K[6], req.camera_info.K[7], req.camera_info.K[8]]])
-        self.meta_data = dict({'intrinsic_matrix': K, 'factor_depth': 1000.0})
+        K = np.array([[req.camera_info.P[0], req.camera_info.P[1], req.camera_info.P[2]],
+                      [req.camera_info.P[4], req.camera_info.P[5], req.camera_info.P[6]],
+                      [req.camera_info.P[8], req.camera_info.P[9], req.camera_info.P[10]]])
+        # print(K)
+        # print(K[0][0]/K[0][2])
+        # print(K[1][1]/K[1][2])
+        # K = np.array([[1066.778, 0, 312.9869], [0, 1067.487, 241.3109], [0, 0, 1]])
+        factor_x = 1066.778/K[0][0]
+        factor_y = 1067.487/K[1][1]
+        self.meta_data = dict({'intrinsic_matrix': K, 'factor_depth': 10000.0})
         if req.depth_image.encoding == '32FC1':
             depth_32 = self.cv_bridge.imgmsg_to_cv2(req.depth_image) * 1000
             depth_cv = np.array(depth_32, dtype=np.uint16)
@@ -49,8 +67,9 @@ class ImageServer:
         # write images
         im = self.cv_bridge.imgmsg_to_cv2(req.rgb_image, 'bgr8')
 
-        im = cv2.resize(im, (640, 480))
-        depth_cv = cv2.resize(depth_cv, (640, 480))
+        # maybe resize image to strange ....
+        # im = cv2.resize(im, (1280, 960))
+        # depth_cv = cv2.resize(depth_cv, (1280, 960))
         # filename = 'images/%06d-color.png' % self.count
         # cv2.imwrite(filename, im)
 
@@ -64,7 +83,6 @@ class ImageServer:
             self.imdb._extents, self.imdb._points_all, self.imdb._symmetry, self.imdb.num_classes)
 
         im_label = self.imdb.labels_to_image(im, labels)
-
         # print np.shape(rois)
         # for x in rois:
         #     for i in x:
@@ -95,7 +113,12 @@ class ImageServer:
         label_msg.header.frame_id = req.rgb_image.header.frame_id
         label_msg.encoding = 'rgb8'
         self.label_pub.publish(label_msg)
-        
+        # for row in label_msg:
+        #     for p in row:
+        #         if 
+        # for x in range(0, label_msg.height*label_msg.width):
+        # print([[x for x in row if 255 not in x] for row in im_label])
+
         msg = Detection3DArray()
         msg.header = req.rgb_image.header
         for i in range(int(rois.shape[0])):
@@ -103,19 +126,23 @@ class ImageServer:
             detection.header = req.rgb_image.header
             hyp = ObjectHypothesisWithPose()
             hyp.id = rois[i, 1]
-            print("detected : {}".format(hyp.id))
             q = Quaternion (poses[i, :4])
             q_norm = q.normalised
             hyp.pose.pose.orientation.w = q_norm[0]
             hyp.pose.pose.orientation.x = q_norm[1]
             hyp.pose.pose.orientation.y = q_norm[2]
             hyp.pose.pose.orientation.z = q_norm[3]
-            hyp.pose.pose.position.x = poses[i][4]
-            hyp.pose.pose.position.y = poses[i][5]
-            hyp.pose.pose.position.z = poses[i][6]
+            hyp.pose.pose.position.x = poses[i][4] / self.xfactor
+            hyp.pose.pose.position.y = poses[i][5] / self.yfactor
+            hyp.pose.pose.position.z = poses[i][6] / self.zfactor
             detection.results.append(hyp)
             msg.detections.append(detection)
-        return posecnn_recognizeResponse(msg)
+        response = posecnn_recognizeResponse()
+        response.detections = msg
+
+        response.label_image_raw = self.cv_bridge.cv2_to_imgmsg(labels.astype(np.uint8), 'mono8')
+        response.label_image_color = label_msg
+        return response
 
 
 # ICP CODE?!??!
@@ -255,6 +282,16 @@ class ImageServer:
         K = np.matrix(meta_data['intrinsic_matrix']) * im_scale
         K[2, 2] = 1
         Kinv = np.linalg.pinv(K)
+        # x = np.zeros(3)
+        # print("check: ")
+        # x[0]=0 * factor_x
+        # x[1]=0*  factor_y
+        # x[2]=0.5
+        # print(np.matmul(K, x))
+        # x[0]=320
+        # x[1]=240
+        # x[2]=0.5
+        # print(np.matmul(Kinv,x))
         mdata = np.zeros(48, dtype=np.float32)
         mdata[0:9] = K.flatten()
         mdata[9:18] = Kinv.flatten()
@@ -312,7 +349,7 @@ class ImageServer:
                 # rois = rois[keep, :]
                 # poses_init = poses_init[keep, :]
                 # poses_pred = poses_pred[keep, :]
-                print rois
+                # print rois
 
                 # combine poses
                 num = rois.shape[0]

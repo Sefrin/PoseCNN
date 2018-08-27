@@ -84,7 +84,6 @@ if __name__ == '__main__':
     pprint.pprint(cfg)
 
     imdb = get_imdb(args.imdb_name)
-
     # construct meta data
     # K = np.array([[565.2146606445312, 0.0, 316.7839657704098], [0.0, 527.93408203125, 259.8812293402443], [0.0, 0.0, 1.0]])
     # K = np.array([[1066.778, 0, 312.9869], [0, 1067.487, 241.3109], [0, 0, 1]])
@@ -110,7 +109,7 @@ if __name__ == '__main__':
 
     from networks.factory import get_network
     network = get_network(args.network_name)
-    print 'Use network `{:s}` in training'.format(args.network_name)
+    print 'Use network `{:s}` for recognition'.format(args.network_name)
 
     # start a session
     saver = tf.train.Saver()

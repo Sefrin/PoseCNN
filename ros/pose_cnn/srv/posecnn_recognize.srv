@@ -8,3 +8,7 @@ sensor_msgs/CameraInfo camera_info
 
 vision_msgs/Detection3DArray detections
 
+
+sensor_msgs/Image label_image_raw
+
+sensor_msgs/Image label_image_color
