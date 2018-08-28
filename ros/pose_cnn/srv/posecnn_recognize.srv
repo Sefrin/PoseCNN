@@ -8,6 +8,7 @@ sensor_msgs/CameraInfo camera_info
 
 vision_msgs/Detection3DArray detections
 
+vision_msgs/BoundingBox2D[] bboxes
 
 sensor_msgs/Image label_image_raw
 

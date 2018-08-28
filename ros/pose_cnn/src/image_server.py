@@ -43,15 +43,14 @@ class ImageServer:
         return config
 
     def rec(self, req):
-        K = np.array([[req.camera_info.P[0], req.camera_info.P[1], req.camera_info.P[2]],
-                      [req.camera_info.P[4], req.camera_info.P[5], req.camera_info.P[6]],
-                      [req.camera_info.P[8], req.camera_info.P[9], req.camera_info.P[10]]])
+        # K = np.array([[req.camera_info.P[0], req.camera_info.P[1], req.camera_info.P[2]],
+        #               [req.camera_info.P[4], req.camera_info.P[5], req.camera_info.P[6]],
+        #               [req.camera_info.P[8], req.camera_info.P[9], req.camera_info.P[10]]])
         # print(K)
         # print(K[0][0]/K[0][2])
         # print(K[1][1]/K[1][2])
-        # K = np.array([[1066.778, 0, 312.9869], [0, 1067.487, 241.3109], [0, 0, 1]])
-        factor_x = 1066.778/K[0][0]
-        factor_y = 1067.487/K[1][1]
+        K = np.array([[1066.778, 0, 312.9869], [0, 1067.487, 241.3109], [0, 0, 1]])
+
         self.meta_data = dict({'intrinsic_matrix': K, 'factor_depth': 10000.0})
         if req.depth_image.encoding == '32FC1':
             depth_32 = self.cv_bridge.imgmsg_to_cv2(req.depth_image) * 1000
@@ -119,9 +118,23 @@ class ImageServer:
         # for x in range(0, label_msg.height*label_msg.width):
         # print([[x for x in row if 255 not in x] for row in im_label])
 
+        response = posecnn_recognizeResponse()
         msg = Detection3DArray()
         msg.header = req.rgb_image.header
         for i in range(int(rois.shape[0])):
+
+            center_x = (rois[i, 2] + rois[i, 4]) / 2
+            center_y = (rois[i, 3] + rois[i, 5]) / 2
+            width = rois[i, 4] - rois[i, 2]
+            height = rois[i, 5] - rois[i, 3]
+            bbox = BoundingBox2D()
+            bbox.center.x = center_x
+            bbox.center.y = center_y
+            bbox.size_x = width
+            bbox.size_y = height
+
+            response.bboxes.append(bbox)
+
             detection = Detection3D()
             detection.header = req.rgb_image.header
             hyp = ObjectHypothesisWithPose()
@@ -132,65 +145,16 @@ class ImageServer:
             hyp.pose.pose.orientation.x = q_norm[1]
             hyp.pose.pose.orientation.y = q_norm[2]
             hyp.pose.pose.orientation.z = q_norm[3]
-            hyp.pose.pose.position.x = poses[i][4] / self.xfactor
-            hyp.pose.pose.position.y = poses[i][5] / self.yfactor
-            hyp.pose.pose.position.z = poses[i][6] / self.zfactor
+            hyp.pose.pose.position.x = poses[i][4]
+            hyp.pose.pose.position.y = poses[i][5]
+            hyp.pose.pose.position.z = poses[i][6]
             detection.results.append(hyp)
             msg.detections.append(detection)
-        response = posecnn_recognizeResponse()
         response.detections = msg
 
         response.label_image_raw = self.cv_bridge.cv2_to_imgmsg(labels.astype(np.uint8), 'mono8')
         response.label_image_color = label_msg
         return response
-
-
-# ICP CODE?!??!
-
-    # if (cfg.TEST.VERTEX_REG_2D and cfg.TEST.POSE_REFINE) or (cfg.TEST.VERTEX_REG_3D and cfg.TEST.POSE_REG):
-    #     synthesizer = libsynthesizer.Synthesizer(cfg.CAD, cfg.POSE)
-    #     synthesizer.setup(cfg.TRAIN.SYN_WIDTH, cfg.TRAIN.SYN_HEIGHT)
-            # if cfg.TEST.POSE_REG:
-            #     # pose refinement
-            #     fx = meta_data['intrinsic_matrix'][0, 0] * im_scale
-            #     fy = meta_data['intrinsic_matrix'][1, 1] * im_scale
-            #     px = meta_data['intrinsic_matrix'][0, 2] * im_scale
-            #     py = meta_data['intrinsic_matrix'][1, 2] * im_scale
-            #     factor = meta_data['factor_depth']
-            #     znear = 0.25
-            #     zfar = 6.0
-            #     poses_new = np.zeros((poses.shape[0], 7), dtype=np.float32)        
-            #     poses_icp = np.zeros((poses.shape[0], 7), dtype=np.float32)     
-            #     error_threshold = 0.01
-            #     
-        #         labels_icp = labels.copy();
-        #         rois_icp = rois
-        #         if imdb.num_classes == 2:
-        #             I = np.where(labels_icp > 0)
-        #             labels_icp[I[0], I[1]] = imdb._cls_index
-        #             rois_icp = rois.copy()
-        #             rois_icp[:, 1] = imdb._cls_index
-        #         im_depth = cv2.resize(im_depth, None, None, fx=im_scale, fy=im_scale, interpolation=cv2.INTER_LINEAR)
-
-        #         parameters = np.zeros((7, ), dtype=np.float32)
-        #         parameters[0] = fx
-        #         parameters[1] = fy
-        #         parameters[2] = px
-        #         parameters[3] = py
-        #         parameters[4] = znear
-        #         parameters[5] = zfar
-        #         parameters[6] = factor
-
-        #         height = labels_icp.shape[0]
-        #         width = labels_icp.shape[1]
-        #         num_roi = rois_icp.shape[0]
-        #         channel_roi = rois_icp.shape[1]
-        #         synthesizer.icp_python(labels_icp, im_depth, parameters, height, width, num_roi, channel_roi, \
-            #                                rois_icp, poses, poses_new, poses_icp, error_threshold)
-
-
-
-
 
 
     def get_image_blob(self, im, im_depth, meta_data):
