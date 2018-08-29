@@ -66,9 +66,15 @@ class ImageServer:
         # write images
         im = self.cv_bridge.imgmsg_to_cv2(req.rgb_image, 'bgr8')
 
-        # maybe resize image to strange ....
-        # im = cv2.resize(im, (1280, 960))
-        # depth_cv = cv2.resize(depth_cv, (1280, 960))
+        # resize so we dont run out of memory :(
+        im_height, im_width, _ = im.shape
+        aspect = float(im_height) / float(im_width) 
+        
+        processing_width = 640 
+        processing_height = processing_width * aspect
+
+        im = cv2.resize(im, (processing_width, int(processing_height)))
+        depth_cv = cv2.resize(depth_cv, (processing_width, int(processing_height)))
         # filename = 'images/%06d-color.png' % self.count
         # cv2.imwrite(filename, im)
 
@@ -81,8 +87,13 @@ class ImageServer:
         labels, probs, vertex_pred, rois, poses = self.im_segment_single_frame(self.sess, self.net, im, depth_cv, self.meta_data, \
             self.imdb._extents, self.imdb._points_all, self.imdb._symmetry, self.imdb.num_classes)
 
+        # resize back to original resolution
         im_label = self.imdb.labels_to_image(im, labels)
-        # print np.shape(rois)
+        im_label = cv2.resize(im_label, (im_width, im_height))
+        # rois[:, 2] *= int(width/640)
+        # rois[:, 4] *= int(width/640)
+        # rois[:, 3] *= int(height/(640*aspect))
+        # rois[:, 5] *= int(height/(640*aspect))
         # for x in rois:
         #     for i in x:
         #         print i
@@ -122,16 +133,17 @@ class ImageServer:
         msg = Detection3DArray()
         msg.header = req.rgb_image.header
         for i in range(int(rois.shape[0])):
-
+            if (all(rois[i]== 0)):
+                continue
             center_x = (rois[i, 2] + rois[i, 4]) / 2
             center_y = (rois[i, 3] + rois[i, 5]) / 2
             width = rois[i, 4] - rois[i, 2]
             height = rois[i, 5] - rois[i, 3]
             bbox = BoundingBox2D()
-            bbox.center.x = center_x
-            bbox.center.y = center_y
-            bbox.size_x = width
-            bbox.size_y = height
+            bbox.center.x = center_x * im_width / processing_width 
+            bbox.center.y = center_y * im_height / processing_height
+            bbox.size_x = width * im_width / processing_width
+            bbox.size_y = height * im_height / processing_height
 
             response.bboxes.append(bbox)
 
@@ -151,8 +163,9 @@ class ImageServer:
             detection.results.append(hyp)
             msg.detections.append(detection)
         response.detections = msg
-
-        response.label_image_raw = self.cv_bridge.cv2_to_imgmsg(labels.astype(np.uint8), 'mono8')
+        #resize raw labels to old resolution and append to msg
+        labels = cv2.resize(labels.astype(np.uint8), (im_width, im_height))
+        response.label_image_raw = self.cv_bridge.cv2_to_imgmsg(labels, 'mono8')
         response.label_image_color = label_msg
         return response
 
