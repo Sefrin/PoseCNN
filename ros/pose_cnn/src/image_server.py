@@ -68,13 +68,15 @@ class ImageServer:
 
         # resize so we dont run out of memory :(
         im_height, im_width, _ = im.shape
-        aspect = float(im_height) / float(im_width) 
-        
-        processing_width = 640 
-        processing_height = processing_width * aspect
-
-        im = cv2.resize(im, (processing_width, int(processing_height)))
-        depth_cv = cv2.resize(depth_cv, (processing_width, int(processing_height)))
+        if (im.shape[1]>640):
+            aspect = float(im_height) / float(im_width)
+            processing_width = 640
+            processing_height = processing_width * aspect
+            im = cv2.resize(im, (processing_width, int(processing_height)))
+            depth_cv = cv2.resize(depth_cv, (processing_width, int(processing_height)))
+        else:
+            processing_width = im_width
+            processing_height = im_height
         # filename = 'images/%06d-color.png' % self.count
         # cv2.imwrite(filename, im)
 
@@ -117,7 +119,7 @@ class ImageServer:
         pose_cnn_msg.rois = rois.astype(np.float32).flatten().tolist()
         pose_cnn_msg.poses = poses.astype(np.float32).flatten().tolist()
         self.posecnn_pub.publish(pose_cnn_msg)
-  
+
         label_msg = self.cv_bridge.cv2_to_imgmsg(im_label)
         label_msg.header.stamp = rospy.Time.now()
         label_msg.header.frame_id = req.rgb_image.header.frame_id
@@ -125,7 +127,7 @@ class ImageServer:
         self.label_pub.publish(label_msg)
         # for row in label_msg:
         #     for p in row:
-        #         if 
+        #         if
         # for x in range(0, label_msg.height*label_msg.width):
         # print([[x for x in row if 255 not in x] for row in im_label])
 
@@ -140,7 +142,7 @@ class ImageServer:
             width = rois[i, 4] - rois[i, 2]
             height = rois[i, 5] - rois[i, 3]
             bbox = BoundingBox2D()
-            bbox.center.x = center_x * im_width / processing_width 
+            bbox.center.x = center_x * im_width / processing_width
             bbox.center.y = center_y * im_height / processing_height
             bbox.size_x = width * im_width / processing_width
             bbox.size_y = height * im_height / processing_height
