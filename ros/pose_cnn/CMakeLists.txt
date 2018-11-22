@@ -61,7 +61,7 @@ find_package(OpenMP REQUIRED)
 add_service_files(
   FILES
   posecnn_recognize.srv
-  posecnn_refined.srv
+  posecnn_recognize_refined.srv
 #   Service2.srv
 )
 

@@ -12,6 +12,7 @@
 #include <tf_conversions/tf_eigen.h>
 
 #include <pose_cnn/posecnn_recognize.h>
+#include <pose_cnn/posecnn_recognize_refined.h>
 #include <pose_cnn_msgs/PoseCNNMsg.h>
 #include <vision_msgs/Detection3DArray.h>
 
@@ -77,6 +78,6 @@ class PoseCNNRefined
 		void getPointsWithLabel(int id, const sensor_msgs::Image& label_image, const vision_msgs::BoundingBox2D& bbox, const pcl::PointCloud<pcl::PointXYZ>::ConstPtr scene, pcl::PointCloud<pcl::PointXYZ>::Ptr& label_cloud);
 		void convertToPointcloud(const sensor_msgs::Image::ConstPtr& depth, const sensor_msgs::CameraInfo::ConstPtr& info, pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud_out);
 		bool isInBBOX(int w, int h, const vision_msgs::BoundingBox2D& bbox);
-		bool serviceCallback(pose_cnn::posecnn_refined::Request  &req,
-         pose_cnn::posecnn_refined::Response &res);
+		bool serviceCallback(pose_cnn::posecnn_recognize_refined::Request  &req,
+         pose_cnn::posecnn_recognize_refined::Response &res);
 };

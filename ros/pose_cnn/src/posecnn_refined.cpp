@@ -23,12 +23,12 @@ PoseCNNRefined::PoseCNNRefined(std::string home_path, std::string models_dir) :
     dynamic_reconfigure::Server<pose_cnn::PoseCNNRefinedConfig>::CallbackType f;
     f = boost::bind(&PoseCNNRefined::dynamicReconfigureCallback, this, _1, _2);
     dyn_reconf_server_.setCallback(f);
-    recognition_server_ = nh_.advertiseService("posecnn_refined", &PoseCNNRefined::serviceCallback, this);
+    recognition_server_ = nh_.advertiseService("posecnn_recognize_refined", &PoseCNNRefined::serviceCallback, this);
 
 }
 
-bool PoseCNNRefined::serviceCallback(pose_cnn::posecnn_refined::Request  &req,
-         pose_cnn::posecnn_refined::Response &res)
+bool PoseCNNRefined::serviceCallback(pose_cnn::posecnn_recognize_refined::Request  &req,
+         pose_cnn::posecnn_recognize_refined::Response &res)
 {
     boost::shared_ptr<sensor_msgs::Image> rgb = boost::make_shared<sensor_msgs::Image>(req.rgb);
     boost::shared_ptr<sensor_msgs::Image> depth = boost::make_shared<sensor_msgs::Image>(req.depth);
