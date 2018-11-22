@@ -1,0 +1,7 @@
+sensor_msgs/Image rgb
+sensor_msgs/Image depth
+sensor_msgs/CameraInfo cam_info
+
+---
+
+vision_msgs/Detection3DArray detections

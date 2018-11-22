@@ -68,7 +68,7 @@ class ImageServer:
 
         # resize so we dont run out of memory :(
         im_height, im_width, _ = im.shape
-        if (im.shape[1]>640):
+        if (im.shape[1]>1000):
             aspect = float(im_height) / float(im_width)
             processing_width = 640
             processing_height = processing_width * aspect
@@ -77,6 +77,7 @@ class ImageServer:
         else:
             processing_width = im_width
             processing_height = im_height
+            print(depth_cv.shape)
         # filename = 'images/%06d-color.png' % self.count
         # cv2.imwrite(filename, im)
 
