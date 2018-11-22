@@ -6,20 +6,14 @@ from vision_msgs.msg import *
 from fcn.config import cfg
 from utils.blob import im_list_to_blob, pad_im, unpad_im, add_noise
 from cv_bridge import CvBridge, CvBridgeError
-# from std_msgs.msg import String
 from sensor_msgs.msg import Image
-# from sensor_msgs.msg import CameraInfo
 from pose_cnn_msgs.msg import PoseCNNMsg
 from pyquaternion import Quaternion
 from dynamic_reconfigure.server import Server
-from pose_cnn.cfg import PoseCNNConfigConfig
 class ImageServer:
 
     def __init__(self, sess, network, imdb, cfg):
 
-        self.xfactor = 1.5
-        self.yfactor = 1.5
-        self.zfactor = 1.5
         self.cv_bridge = CvBridge()
         self.sess = sess
         self.net = network
@@ -31,25 +25,12 @@ class ImageServer:
         self.posecnn_pub = rospy.Publisher('posecnn_result', PoseCNNMsg, queue_size=1)
         self.label_pub = rospy.Publisher('posecnn_label', Image, queue_size=1)
         print "PoseCNN recognition ready."
-        srv = Server(PoseCNNConfigConfig, self.callback)
         rospy.spin()
 
-    def callback(self, config, level):
-        self.xfactor = config['x_factor']
-        self.yfactor = config['y_factor']
-        self.zfactor = config['z_factor']
-        print( config['z_factor'])
-        print "callback"
-        return config
-
     def rec(self, req):
-        # K = np.array([[req.camera_info.P[0], req.camera_info.P[1], req.camera_info.P[2]],
-        #               [req.camera_info.P[4], req.camera_info.P[5], req.camera_info.P[6]],
-        #               [req.camera_info.P[8], req.camera_info.P[9], req.camera_info.P[10]]])
-        # print(K)
-        # print(K[0][0]/K[0][2])
-        # print(K[1][1]/K[1][2])
-        K = np.array([[1066.778, 0, 312.9869], [0, 1067.487, 241.3109], [0, 0, 1]])
+        K = np.array([[req.camera_info.P[0], req.camera_info.P[1], req.camera_info.P[2]],
+                      [req.camera_info.P[4], req.camera_info.P[5], req.camera_info.P[6]],
+                      [req.camera_info.P[8], req.camera_info.P[9], req.camera_info.P[10]]])
 
         self.meta_data = dict({'intrinsic_matrix': K, 'factor_depth': 10000.0})
         if req.depth_image.encoding == '32FC1':
@@ -93,15 +74,7 @@ class ImageServer:
         # resize back to original resolution
         im_label = self.imdb.labels_to_image(im, labels)
         im_label = cv2.resize(im_label, (im_width, im_height))
-        # rois[:, 2] *= int(width/640)
-        # rois[:, 4] *= int(width/640)
-        # rois[:, 3] *= int(height/(640*aspect))
-        # rois[:, 5] *= int(height/(640*aspect))
-        # for x in rois:
-        #     for i in x:
-        #         print i
-        # print "nums {}".format(int(rois.shape[0]))
-        # print "channel {}".format(int(rois.shape[1]))
+
         # publish
         pose_cnn_msg = PoseCNNMsg()
         pose_cnn_msg.height = int(im.shape[0])
