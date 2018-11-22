@@ -154,6 +154,12 @@ add_executable(posecnn_refined src/posecnn_refined.cpp)
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
+
+target_link_libraries(database_loader
+  ${catkin_LIBRARIES}
+  yaml-cpp
+)
+
 target_link_libraries(posecnn_refined
   ${catkin_LIBRARIES}
   database_loader
