@@ -34,7 +34,11 @@ If you find PoseCNN useful in your research, please consider citing:
     ```
 3. Download the VGG16 weights from [here](https://drive.google.com/open?id=1UdmOKrr9t4IetMubX-y-Pcn7AVaWJ2bL) (528M). Put the weight file vgg16.npy to $ROOT/data/imagenet_models.
 
-4. Compile lib/synthesize with cmake (optional). This package contains a few useful tools such as generating synthetic images for training and ICP.
+4. 
+    ```Shell
+      python setup.py build_ext --inplace
+    ```
+5. Compile lib/synthesize with cmake (optional). This package contains a few useful tools such as generating synthetic images for training and ICP.
 
    Install dependencies:
    - [Pangolin](https://github.com/stevenlovegrove/Pangolin)
