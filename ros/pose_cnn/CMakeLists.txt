@@ -15,6 +15,9 @@ find_package(catkin REQUIRED COMPONENTS
   message_filters
   vision_msgs
   dynamic_reconfigure
+  cv_bridge
+  image_geometry
+  tf_conversions
 )
 
 ## System dependencies are found with CMake's conventions
@@ -126,7 +129,7 @@ include_directories(
 )
 
 ## Declare a C++ library
-add_library(${PROJECT_NAME}
+add_library(database_loader
   src/database_loader.cpp
 )
 
