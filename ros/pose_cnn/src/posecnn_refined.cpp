@@ -11,9 +11,6 @@ PoseCNNRefined::PoseCNNRefined(std::string home_path, std::string models_dir) :
 {
 
     obj_rec_client_ = nh_.serviceClient<pose_cnn::posecnn_recognize>("/posecnn_recognize");
-    // tf_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud2>(cloud_sub_, tf_, "aruco_ref", 10);
-    // tf_filter_->registerCallback(boost::bind(&RecognitionNode::cloudCallback, this, _1));
-    // tf_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud2>(rgb, tf_, cam_name_ + "/aruco_node/aruco_ref", 10);
     sync_ = new message_filters::Synchronizer<approx_sync>(approx_sync(10), rgb_sub_, depth_sub_, cam_info_sub_);
     sync_->registerCallback(boost::bind(&PoseCNNRefined::syncCallback, this, _1, _2, _3));
     detection_pub_ = nh_.advertise<vision_msgs::Detection3DArray>("/PoseCNN/detections", 1, true);
@@ -24,7 +21,7 @@ PoseCNNRefined::PoseCNNRefined(std::string home_path, std::string models_dir) :
     f = boost::bind(&PoseCNNRefined::dynamicReconfigureCallback, this, _1, _2);
     dyn_reconf_server_.setCallback(f);
     recognition_server_ = nh_.advertiseService("posecnn_recognize_refined", &PoseCNNRefined::serviceCallback, this);
-
+    ROS_INFO("PoseCNN refined server started");
 }
 
 bool PoseCNNRefined::serviceCallback(pose_cnn::posecnn_recognize_refined::Request  &req,
@@ -54,7 +51,7 @@ void PoseCNNRefined::syncCallback(const sensor_msgs::Image::ConstPtr& rgb, const
 void PoseCNNRefined::callPoseCNN(const sensor_msgs::Image::ConstPtr& rgb, const sensor_msgs::Image::ConstPtr& depth, const sensor_msgs::CameraInfo::ConstPtr& info, boost::shared_ptr<vision_msgs::Detection3DArray>& d3d_out)
 {
     pose_cnn::posecnn_recognize srv;
-    // cloud_pub_.publish(cloud);
+
     srv.request.camera_info = *info;
     srv.request.rgb_image = *rgb;
     srv.request.depth_image = *depth;
@@ -78,25 +75,22 @@ void PoseCNNRefined::callPoseCNN(const sensor_msgs::Image::ConstPtr& rgb, const 
         }
         else
         {
-            //remove for serious results. this just returns the posecnn result for temporary testing.
-            // d3d_out = boost::make_shared<vision_msgs::Detection3DArray>(srv.response.detections);
-            // return;
-
 
             ROS_INFO("I detected: %zd objects.", srv.response.detections.detections.size());
-
+            // Instantiate cloud for detected objects
             pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud_all (new pcl::PointCloud<pcl::PointXYZRGBNormal>);
             cloud_all->header.frame_id = rgb->header.frame_id;
             pcl_conversions::toPCL(ros::Time::now(), cloud_all->header.stamp);
+
+            // create pointcloud from depth image
             pcl::PointCloud<pcl::PointXYZ>::Ptr scene_cloud (new pcl::PointCloud<pcl::PointXYZ>);
             convertToPointcloud(depth, info, scene_cloud);
-            pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_cluster (new pcl::PointCloud<pcl::PointXYZRGB>);
 
-            // pcl::PointCloud<pcl::PointXYZ>::Ptr scene_downsampled = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-            // pcl::VoxelGrid<pcl::PointXYZ> scene_vg;
-            // scene_vg.setInputCloud(scene_cloud);
-            // scene_vg.setLeafSize(config_.voxel_grid_leaf_size, config_.voxel_grid_leaf_size, config_.voxel_grid_leaf_size);
-            // scene_vg.filter(*scene_downsampled);
+            pcl::PointCloud<pcl::PointXYZ>::Ptr scene_downsampled = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+            pcl::VoxelGrid<pcl::PointXYZ> scene_vg;
+            scene_vg.setInputCloud(scene_cloud);
+            scene_vg.setLeafSize(config_.voxel_grid_leaf_size, config_.voxel_grid_leaf_size, config_.voxel_grid_leaf_size);
+            scene_vg.filter(*scene_downsampled);
 
 
             //step 1: RANSAC on complete scene to remove ground.
@@ -111,12 +105,12 @@ void PoseCNNRefined::callPoseCNN(const sensor_msgs::Image::ConstPtr& rgb, const 
             seg.setMethodType (pcl::SAC_RANSAC);
             seg.setDistanceThreshold (config_.ransac_distance);
 
-            seg.setInputCloud (scene_cloud);
+            seg.setInputCloud (scene_downsampled);
             seg.segment (*inliers, *coefficients);
             //extract points that are not in the plane
             pcl::PointCloud<pcl::PointXYZ>::Ptr scene_filtered (new pcl::PointCloud<pcl::PointXYZ>);
             pcl::ExtractIndices<pcl::PointXYZ> extract;
-            extract.setInputCloud (scene_cloud);
+            extract.setInputCloud (scene_downsampled);
             extract.setIndices (inliers);
             extract.setNegative(true);
             extract.filter (*scene_filtered);
@@ -154,11 +148,11 @@ void PoseCNNRefined::callPoseCNN(const sensor_msgs::Image::ConstPtr& rgb, const 
                 center_offset_vector.setY(-model_centroid.y);
                 center_offset_vector.setZ(-model_centroid.z);
                 center_offset.setOrigin(center_offset_vector);
-                //calculate center of labeled area, in order to find good initial position 1. option: from labeled clusters, 2. option: from 2d bbox center projection
-                // 1
+                //calculate center of labeled area, in order to find good initial position
+                // we take z from the center of the 3D projection of the label image
                 pcl::PointXYZ label_cluster_centroid;
                 pcl::computeCentroid(*label_cloud, label_cluster_centroid);
-                //2
+                // and x and y from the projection of the centroid of the predicted bbox of the object
                 image_geometry::PinholeCameraModel model;
                 model.fromCameraInfo(info);
                 cv::Point2d bbox_center_2d(srv.response.bboxes[object_idx].center.x, srv.response.bboxes[object_idx].center.y);
@@ -208,14 +202,14 @@ void PoseCNNRefined::callPoseCNN(const sensor_msgs::Image::ConstPtr& rgb, const 
                 *cloud_all += *model_cloud;
                 cloud_pub_.publish(cloud_all);
                 geometry_msgs::Transform ros_tf;
-                //concatenate transforms frm right to left!!
-                tf::transformTFToMsg((icp_tf * center_offset * init_location * init_rotation), ros_tf); // icp_tf * ...
+                //concatenate transforms from right to left!!
+                tf::transformTFToMsg((icp_tf * center_offset * init_location * init_rotation), ros_tf);
                 object->results[0].pose.pose.orientation = ros_tf.rotation;
                 object->results[0].pose.pose.position.x = ros_tf.translation.x;
                 object->results[0].pose.pose.position.y = ros_tf.translation.y;
                 object->results[0].pose.pose.position.z = ros_tf.translation.z;
             }
-            // cloud_debug_pub_.publish(cloud_cluster);
+
             cloud_pub_.publish(cloud_all);
             d3d_out = boost::make_shared<vision_msgs::Detection3DArray>(srv.response.detections);
         }
@@ -237,7 +231,6 @@ void PoseCNNRefined::getPointsWithLabel(int id, const sensor_msgs::Image& label_
             {
                 label_cloud->push_back(scene->at(i, j));
             }
-
         }
     }
     std::vector<int> dummy;
@@ -246,7 +239,6 @@ void PoseCNNRefined::getPointsWithLabel(int id, const sensor_msgs::Image& label_
 
 bool PoseCNNRefined::isInBBOX(int w, int h, const vision_msgs::BoundingBox2D& bbox)
 {
-    // return true;
     int wmax = bbox.center.x + bbox.size_x;
     int wmin = bbox.center.x - bbox.size_x;
     int hmax = bbox.center.y + bbox.size_y;
@@ -266,25 +258,20 @@ void PoseCNNRefined::performICP(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr s
         tf_out.setIdentity();
         return;
     }
-    pcl::PointCloud<pcl::PointXYZ>::Ptr model_no_rgb = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-    pcl::copyPointCloud(*model, *model_no_rgb);
-
-    //downsample model
-    // pcl::PointCloud<pcl::PointXYZ>::Ptr model_downsampled = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-    // pcl::VoxelGrid<pcl::PointXYZ> model_vg;
-    // model_vg.setInputCloud(model_no_rgb);
-    // model_vg.setLeafSize(0.005, 0.005, 0.005);
-    // model_vg.filter(*model_downsampled);
-    // pcl::removeNaNFromPointCloud(*model_downsampled, *model_downsampled, dummy);
+    //for removeNaNFromPC call
     std::vector<int> dummy;
+    //downsample model
+    pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr model_downsampled = boost::make_shared<pcl::PointCloud<pcl::PointXYZRGBNormal>>();
+    pcl::VoxelGrid<pcl::PointXYZRGBNormal> model_vg;
+    model_vg.setInputCloud(model);
+    model_vg.setLeafSize(config_.voxel_grid_leaf_size, config_.voxel_grid_leaf_size, config_.voxel_grid_leaf_size);
+    model_vg.filter(*model_downsampled);
+    pcl::removeNaNFromPointCloud(*model_downsampled, *model_downsampled, dummy);
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr model_no_rgb = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+    pcl::copyPointCloud(*model_downsampled, *model_no_rgb);
     pcl::removeNaNFromPointCloud(*model_no_rgb, *model_no_rgb, dummy);
 
-    //downsample scene cluster
-    // pcl::PointCloud<pcl::PointNormal>::Ptr scene_downsampled = boost::make_shared<pcl::PointCloud<pcl::PointNormal>>();
-    // pcl::VoxelGrid<pcl::PointNormal> scene_vg;
-    // scene_vg.setInputCloud(scene_with_normals);
-    // scene_vg.setLeafSize(config_.voxel_grid_leaf_size, config_.voxel_grid_leaf_size, config_.voxel_grid_leaf_size);
-    // scene_vg.filter(*scene_downsampled);
 
     ROS_INFO("Optimizing pose...");
     ROS_INFO("Scene points: %lu, model points: %lu", scene->size(), model_no_rgb->size());
