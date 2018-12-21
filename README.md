@@ -80,6 +80,12 @@ If you find PoseCNN useful in your research, please consider citing:
     ./experiments/scripts/demo.sh $GPU_ID
     ```
 
+### Usage with ROS:
+For using the PoseCNN as is, use the recognition_server.launch file, it will launch a service that publishes returns a vision_msgs::Detection3DArray.
+
+For using the refined version, use the refined_server.launch file. It will also launch a service that returns Detection3DArrays. It also listens on /camera/... topics for messages and publishes the D3DArray if it receives messages.
+
+
 ### Running on the YCB-Video dataset
 1. Download the YCB-Video dataset from [here](https://rse-lab.cs.washington.edu/projects/posecnn/).
 
