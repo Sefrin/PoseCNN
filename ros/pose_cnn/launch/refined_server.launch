@@ -5,5 +5,5 @@
 
 	<include file="$(find pose_cnn)/launch/recognition_server.launch"/>
 
-	<node pkg="compare_cams" type="posecnn_refined" name="posecnn_refined" args="$(arg home_path) $(arg models_dir)" output="screen" respawn="true"/>
+	<node pkg="pose_cnn" type="posecnn_refined" name="posecnn_refined" args="$(arg home_path) $(arg models_dir)" output="screen" respawn="true"/>
 </launch>
