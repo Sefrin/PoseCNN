@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <launch>
-	<arg name="home_path" default="$(env HOME)/storage/compare_data/" />
-	<arg name="models_dir" default="$(arg home_path)/YCB_models/" />
+	<arg name="data_path" default="$(find pose_cnn)/../../data/" />
+	<arg name="models_dir" default="$(find pose_cnn)/../../data/models/" />
 
 	<include file="$(find pose_cnn)/launch/recognition_server.launch"/>
 
-	<node pkg="pose_cnn" type="posecnn_refined" name="posecnn_refined" args="$(arg home_path) $(arg models_dir)" output="screen" respawn="true"/>
+	<node pkg="pose_cnn" type="posecnn_refined" name="posecnn_refined" args="$(arg data_path) $(arg models_dir)" output="screen" respawn="true"/>
 </launch>
