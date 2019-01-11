@@ -84,7 +84,7 @@ If you find PoseCNN useful in your research, please consider citing:
 
 Run \_init_paths.py (located in PoseCNN/ros/pose_cnn/src) in order to add the fcn directory (located in PoseCNN/lib) to the pythonpath. The directory can also be added manually.
 
-For using the PoseCNN as is, use the recognition_server.launch file, it will launch a service that publishes returns a vision_msgs::Detection3DArray.
+For using the PoseCNN as is, use the recognition_server.launch file, it will launch a service that returns a vision_msgs::Detection3DArray.
 
 For using the refined version, use the refined_server.launch file. It will also launch a service that returns Detection3DArrays. It also listens on /camera/... topics for messages and publishes the D3DArray if it receives messages.
 
