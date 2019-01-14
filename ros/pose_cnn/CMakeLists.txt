@@ -114,7 +114,7 @@ generate_dynamic_reconfigure_options(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
  INCLUDE_DIRS include
- LIBRARIES database_loader
+ # LIBRARIES ${PROJECT_NAME}_model_loader
  CATKIN_DEPENDS message_runtime rospy sensor_msgs std_msgs vision_msgs
 #  DEPENDS OpenMP
 )
@@ -131,10 +131,9 @@ include_directories(
 )
 
 ## Declare a C++ library
-add_library(database_loader
-  src/database_loader.cpp
+add_library(${PROJECT_NAME}_model_loader
+  src/model_loader.cpp
 )
-
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
@@ -160,14 +159,14 @@ add_dependencies(posecnn_refined ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EX
 #   ${catkin_LIBRARIES}
 # )
 
-target_link_libraries(database_loader
+target_link_libraries(${PROJECT_NAME}_model_loader
   ${catkin_LIBRARIES}
   yaml-cpp
 )
 
 target_link_libraries(posecnn_refined
   ${catkin_LIBRARIES}
-  database_loader
+  ${PROJECT_NAME}_model_loader
   ${OpenMP_CXX_FLAGS}
 )
 
@@ -187,7 +186,7 @@ target_compile_options(posecnn_refined PRIVATE -Wall ${OpenMP_CXX_FLAGS})
 # )
 
 ## Mark executables and/or libraries for installation
-install(TARGETS posecnn_refined database_loader
+install(TARGETS posecnn_refined ${PROJECT_NAME}_model_loader
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

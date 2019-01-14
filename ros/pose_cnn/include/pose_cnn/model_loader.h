@@ -6,10 +6,10 @@
 #include <pcl_ros/point_cloud.h>
 typedef pcl::PointXYZRGBNormal Point;
 typedef pcl::PointCloud<Point> PointCloud;
-class DatabaseLoader
+class ModelLoader
 {
 	public:
-		DatabaseLoader(std::string home_path, std::string models_dir);
+		ModelLoader(std::string home_path, std::string models_dir);
 		std::string getName(int id);
 		int getID(std::string name);
 		void getCloud(int id, PointCloud::Ptr& cloud);

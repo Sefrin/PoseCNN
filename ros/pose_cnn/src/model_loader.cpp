@@ -1,13 +1,13 @@
-#include <pose_cnn/database_loader.h>
+#include <pose_cnn/model_loader.h>
 
-DatabaseLoader::DatabaseLoader(std::string home_path, std::string models_dir) :
+ModelLoader::ModelLoader(std::string home_path, std::string models_dir) :
 	home_path_(home_path),
 	models_dir_(models_dir)
 {
 	loadMapping();
 }
 
-void DatabaseLoader::loadMapping()
+void ModelLoader::loadMapping()
 {
     try
     {
@@ -26,20 +26,20 @@ void DatabaseLoader::loadMapping()
     }
 }
 
-std::string DatabaseLoader::getName(int id)
+std::string ModelLoader::getName(int id)
 {
 	return object_id_to_name_.at(id);
 }
 
-int DatabaseLoader::getID(std::string name)
+int ModelLoader::getID(std::string name)
 {
 	return object_name_to_id_.at(name);
 }
-void DatabaseLoader::getCloud(int id, PointCloud::Ptr& cloud)
+void ModelLoader::getCloud(int id, PointCloud::Ptr& cloud)
 {
     getCloud(getName(id), cloud);
 }
-void DatabaseLoader::getCloud(std::string name, PointCloud::Ptr& cloud)
+void ModelLoader::getCloud(std::string name, PointCloud::Ptr& cloud)
 {
     if (models_.count(name) == 0)
     {
@@ -53,11 +53,11 @@ void DatabaseLoader::getCloud(std::string name, PointCloud::Ptr& cloud)
     }
 }
 
-bool DatabaseLoader::objectInDB(int id)
+bool ModelLoader::objectInDB(int id)
 {
     return object_id_to_name_.count(id);
 }
-bool DatabaseLoader::objectInDB(std::string name)
+bool ModelLoader::objectInDB(std::string name)
 {
     return object_name_to_id_.count(name);
 }

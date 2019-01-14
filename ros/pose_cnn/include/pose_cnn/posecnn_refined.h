@@ -17,7 +17,7 @@
 #include <vision_msgs/Detection3DArray.h>
 
 #include <pose_cnn/PoseCNNRefinedConfig.h>
-#include <pose_cnn/database_loader.h>
+#include <pose_cnn/model_loader.h>
 
 #include <cv_bridge/cv_bridge.h>
 #include <depth_image_proc/depth_conversions.h>
@@ -69,7 +69,7 @@ class PoseCNNRefined
 		dynamic_reconfigure::Server<pose_cnn::PoseCNNRefinedConfig> dyn_reconf_server_;
 		pose_cnn::PoseCNNRefinedConfig config_;
 
-		DatabaseLoader db_loader_;
+		ModelLoader db_loader_;
 
 		void dynamicReconfigureCallback(pose_cnn::PoseCNNRefinedConfig &config, uint32_t level);
 		void syncCallback(const sensor_msgs::Image::ConstPtr& rgb, const sensor_msgs::Image::ConstPtr& depth, const sensor_msgs::CameraInfo::ConstPtr& info);
